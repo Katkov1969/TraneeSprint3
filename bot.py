@@ -1,9 +1,9 @@
 import telebot
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 from telebot import types
 
-TOKEN = '   '
+TOKEN = '7585140510:AAH4vOvoVTp1tee5bamKriSUvZ6QKpy5MX4'
 bot = telebot.TeleBot(TOKEN)
 
 user_states = {}  # тут будем хранить информацию о действиях пользователя
@@ -86,6 +86,17 @@ def pixelate_image(image, pixel_size):
     )
     return image
 
+# Новая функция: инверсия цветов
+def invert_colors(image: Image.Image) -> Image.Image:
+    """
+    Применяет инверсию цветов (негатив) к изображению.
+
+    :param image: Исходное изображение.
+    :return: Изображение с инверсией цветов.
+    """
+    return ImageOps.invert(image)  # Используем встроенную функцию из PIL
+
+
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -123,11 +134,14 @@ def handle_text(message):
     else:
         bot.reply_to(message, "Please send me an image first.")
 
+
 def get_options_keyboard():
+    # Изменено: добавлена кнопка "Invert Colors"
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
-    keyboard.add(pixelate_btn, ascii_btn)
+    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")  # Новая кнопка
+    keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     return keyboard
 
 
@@ -139,6 +153,10 @@ def callback_query(call):
     elif call.data == "ascii":
         bot.answer_callback_query(call.id, "Converting your image to ASCII art...")
         ascii_and_send(call.message)
+    elif call.data == "invert":  # Изменено: добавлен обработчик для инверсии цветов
+        bot.answer_callback_query(call.id, "Inverting colors of your image...")
+        invert_and_send(call.message)
+
 
 
 def pixelate_and_send(message):
@@ -174,6 +192,27 @@ def ascii_and_send(message):
 
     # Отправляем результат
     bot.send_message(chat_id, f"```\n{ascii_art}\n```", parse_mode="MarkdownV2")
+
+
+# Новая функция: обработка инверсии цветов
+def invert_and_send(message):
+    """
+    Применяет инверсию цветов к изображению и отправляет его пользователю.
+
+    :param message: Сообщение Telegram.
+    """
+    chat_id = message.chat.id
+    photo_id = user_states[chat_id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    inverted_image = invert_colors(image)
+    output_stream = io.BytesIO()
+    inverted_image.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(chat_id, output_stream)
+
 
 
 bot.polling(none_stop=True)
