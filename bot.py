@@ -97,6 +97,22 @@ def invert_colors(image: Image.Image) -> Image.Image:
     return ImageOps.invert(image)  # Используем встроенную функцию из PIL
 
 
+# Новая функция: отражение изображения
+def mirror_image(image: Image.Image, direction: str) -> Image.Image:
+    """
+    Отражает изображение по горизонтали или вертикали.
+
+    :param image: Исходное изображение.
+    :param direction: Направление отражения ("horizontal" или "vertical").
+    :return: Отраженное изображение.
+    """
+    if direction == "horizontal":
+        return image.transpose(Image.FLIP_LEFT_RIGHT)  # Отражение по горизонтали
+    elif direction == "vertical":
+        return image.transpose(Image.FLIP_TOP_BOTTOM)  # Отражение по вертикали
+    else:
+        raise ValueError("Direction must be 'horizontal' or 'vertical'.")
+
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -136,12 +152,15 @@ def handle_text(message):
 
 
 def get_options_keyboard():
-    # Изменено: добавлена кнопка "Invert Colors"
+    # Изменено: добавлены кнопки для отражения изображения
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
-    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")  # Новая кнопка
+    invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")
+    mirror_horiz_btn = types.InlineKeyboardButton("Mirror Horizontally", callback_data="mirror_horizontal")  # Новая кнопка
+    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertically", callback_data="mirror_vertical")  # Новая кнопка
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
+    keyboard.add(mirror_horiz_btn, mirror_vert_btn)  # Добавляем кнопки в отдельный ряд
     return keyboard
 
 
@@ -153,9 +172,15 @@ def callback_query(call):
     elif call.data == "ascii":
         bot.answer_callback_query(call.id, "Converting your image to ASCII art...")
         ascii_and_send(call.message)
-    elif call.data == "invert":  # Изменено: добавлен обработчик для инверсии цветов
+    elif call.data == "invert":
         bot.answer_callback_query(call.id, "Inverting colors of your image...")
         invert_and_send(call.message)
+    elif call.data == "mirror_horizontal":  # Изменено: добавлен обработчик для горизонтального отражения
+        bot.answer_callback_query(call.id, "Mirroring your image horizontally...")
+        mirror_and_send(call.message, "horizontal")
+    elif call.data == "mirror_vertical":  # Изменено: добавлен обработчик для вертикального отражения
+        bot.answer_callback_query(call.id, "Mirroring your image vertically...")
+        mirror_and_send(call.message, "vertical")
 
 
 
@@ -213,6 +238,26 @@ def invert_and_send(message):
     output_stream.seek(0)
     bot.send_photo(chat_id, output_stream)
 
+
+# Новая функция: обработка отражения изображения
+def mirror_and_send(message, direction: str):
+    """
+    Отражает изображение и отправляет его пользователю.
+
+    :param message: Сообщение Telegram.
+    :param direction: Направление отражения ("horizontal" или "vertical").
+    """
+    chat_id = message.chat.id
+    photo_id = user_states[chat_id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    mirrored_image = mirror_image(image, direction)
+    output_stream = io.BytesIO()
+    mirrored_image.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(chat_id, output_stream)
 
 
 bot.polling(none_stop=True)
