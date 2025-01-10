@@ -47,4 +47,31 @@
 2. Инверсия
 ![Инверсия и новая кнопка](https://github.com/user-attachments/assets/ecfc0337-fde1-4e02-b675-3d6005d65853)
 
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ЗАДАНИЕ 3
+Внесенные изменения:
+1. Добавлена функция mirror_image.
+  Функция использует метод transpose из Pillow для отражения изображения по горизонтали (Image.FLIP_LEFT_RIGHT) или вертикали (Image.FLIP_TOP_BOTTOM).
+
+2. Добпавлены кнопки для отражения.
+ Добавлены кнопки "Mirror Horizontally" и "Mirror Vertically" в меню действий.
+
+3. Изменен обработчик callback_query.
+   Добавлены ветки для обработки действий "Mirror Horizontally" и "Mirror Vertically".
+
+4. Добавлена функция mirror_and_send:
+   Функция выполняет отражение изображения в указанном направлении и отправляет результат пользователю.
+
+Пример использования:
+![Исходное изображение](https://github.com/user-attachments/assets/6fbfccc9-77f1-4316-a3c5-d4d7bc13308d)
+
+Горизонтальное отражение:
+![Горизонтальная отражение](https://github.com/user-attachments/assets/2ba9775d-f1b1-4e62-b947-9cd226816670)
+
+Вертикальное отражение:
+![Вертикальное отражение](https://github.com/user-attachments/assets/1b2ea326-3ff7-4c59-af53-a526334fc135)
+
+
+
+
 
