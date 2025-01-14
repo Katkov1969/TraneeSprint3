@@ -113,6 +113,18 @@ def mirror_image(image: Image.Image, direction: str) -> Image.Image:
     else:
         raise ValueError("Direction must be 'horizontal' or 'vertical'.")
 
+# Новая функция: преобразование в тепловую карту
+def convert_to_heatmap(image: Image.Image) -> Image.Image:
+    """
+    Преобразует изображение в тепловую карту.
+
+    :param image: Исходное изображение.
+    :return: Изображение в виде тепловой карты.
+    """
+    grayscale_image = image.convert("L")  # Преобразуем изображение в оттенки серого
+    heatmap_image = ImageOps.colorize(grayscale_image, black="blue", white="red")  # Градиент от синего к красному
+    return heatmap_image
+
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -152,17 +164,18 @@ def handle_text(message):
 
 
 def get_options_keyboard():
-    # Изменено: добавлены кнопки для отражения изображения
+    # Изменено: добавлена кнопка для тепловой карты
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
     invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")
-    mirror_horiz_btn = types.InlineKeyboardButton("Mirror Horizontally", callback_data="mirror_horizontal")  # Новая кнопка
-    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertically", callback_data="mirror_vertical")  # Новая кнопка
+    mirror_horiz_btn = types.InlineKeyboardButton("Mirror Horizontally", callback_data="mirror_horizontal")
+    mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertically", callback_data="mirror_vertical")
+    heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")  # Новая кнопка
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
-    keyboard.add(mirror_horiz_btn, mirror_vert_btn)  # Добавляем кнопки в отдельный ряд
+    keyboard.add(mirror_horiz_btn, mirror_vert_btn)
+    keyboard.add(heatmap_btn)  # Добавляем кнопку в отдельный ряд
     return keyboard
-
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
@@ -175,13 +188,15 @@ def callback_query(call):
     elif call.data == "invert":
         bot.answer_callback_query(call.id, "Inverting colors of your image...")
         invert_and_send(call.message)
-    elif call.data == "mirror_horizontal":  # Изменено: добавлен обработчик для горизонтального отражения
+    elif call.data == "mirror_horizontal":  # обработчик для горизонтального отражения
         bot.answer_callback_query(call.id, "Mirroring your image horizontally...")
         mirror_and_send(call.message, "horizontal")
-    elif call.data == "mirror_vertical":  # Изменено: добавлен обработчик для вертикального отражения
+    elif call.data == "mirror_vertical":  # oбработчик для вертикального отражения
         bot.answer_callback_query(call.id, "Mirroring your image vertically...")
         mirror_and_send(call.message, "vertical")
-
+    elif call.data == "heatmap":  # Изменено: добавлен обработчик для тепловой карты
+        bot.answer_callback_query(call.id, "Converting your image to a heatmap...")
+        heatmap_and_send(call.message)
 
 
 def pixelate_and_send(message):
@@ -259,5 +274,24 @@ def mirror_and_send(message, direction: str):
     output_stream.seek(0)
     bot.send_photo(chat_id, output_stream)
 
+
+# Новая функция: обработка тепловой карты
+def heatmap_and_send(message):
+    """
+    Преобразует изображение в тепловую карту и отправляет его пользователю.
+
+    :param message: Сообщение Telegram.
+    """
+    chat_id = message.chat.id
+    photo_id = user_states[chat_id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    heatmap_image = convert_to_heatmap(image)
+    output_stream = io.BytesIO()
+    heatmap_image.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(chat_id, output_stream)
 
 bot.polling(none_stop=True)
