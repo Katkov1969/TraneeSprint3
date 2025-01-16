@@ -1,5 +1,5 @@
 import telebot
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageFilter
 import io
 from telebot import types
 
@@ -113,7 +113,7 @@ def mirror_image(image: Image.Image, direction: str) -> Image.Image:
     else:
         raise ValueError("Direction must be 'horizontal' or 'vertical'.")
 
-# Новая функция: преобразование в тепловую карту
+# Функция: преобразование в тепловую карту
 def convert_to_heatmap(image: Image.Image) -> Image.Image:
     """
     Преобразует изображение в тепловую карту.
@@ -124,6 +124,24 @@ def convert_to_heatmap(image: Image.Image) -> Image.Image:
     grayscale_image = image.convert("L")  # Преобразуем изображение в оттенки серого
     heatmap_image = ImageOps.colorize(grayscale_image, black="blue", white="red")  # Градиент от синего к красному
     return heatmap_image
+
+# Новая функция: изменение размера изображения для стикера
+def resize_for_sticker(image: Image.Image, max_size: int = 512) -> Image.Image:
+    """
+    Изменяет размер изображения для использования в качестве стикера.
+
+    :param image: Исходное изображение.
+    :param max_size: Максимальный размер измерения (по умолчанию 512 пикселей).
+    :return: Изображение с измененным размером.
+    """
+    width, height = image.size
+    scaling_factor = min(max_size / width, max_size / height)
+    if scaling_factor >= 1:
+        return image  # Если изображение уже меньше заданного размера, возвращаем его без изменений
+    new_width = int(width * scaling_factor)
+    new_height = int(height * scaling_factor)
+    resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)  # Используем Resampling вместо ANTIALIAS
+    return resized_image
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -164,17 +182,18 @@ def handle_text(message):
 
 
 def get_options_keyboard():
-    # Изменено: добавлена кнопка для тепловой карты
+    # Изменено: добавлена кнопка для изменения размера изображения
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
     invert_btn = types.InlineKeyboardButton("Invert Colors", callback_data="invert")
     mirror_horiz_btn = types.InlineKeyboardButton("Mirror Horizontally", callback_data="mirror_horizontal")
     mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertically", callback_data="mirror_vertical")
-    heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")  # Новая кнопка
+    heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
+    resize_sticker_btn = types.InlineKeyboardButton("Resize for Sticker", callback_data="resize_sticker")  # Новая кнопка
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_horiz_btn, mirror_vert_btn)
-    keyboard.add(heatmap_btn)  # Добавляем кнопку в отдельный ряд
+    keyboard.add(heatmap_btn, resize_sticker_btn)  # Добавляем кнопку в ряд
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -188,15 +207,18 @@ def callback_query(call):
     elif call.data == "invert":
         bot.answer_callback_query(call.id, "Inverting colors of your image...")
         invert_and_send(call.message)
-    elif call.data == "mirror_horizontal":  # обработчик для горизонтального отражения
+    elif call.data == "mirror_horizontal":
         bot.answer_callback_query(call.id, "Mirroring your image horizontally...")
         mirror_and_send(call.message, "horizontal")
-    elif call.data == "mirror_vertical":  # oбработчик для вертикального отражения
+    elif call.data == "mirror_vertical":
         bot.answer_callback_query(call.id, "Mirroring your image vertically...")
         mirror_and_send(call.message, "vertical")
-    elif call.data == "heatmap":  # Изменено: добавлен обработчик для тепловой карты
+    elif call.data == "heatmap":
         bot.answer_callback_query(call.id, "Converting your image to a heatmap...")
         heatmap_and_send(call.message)
+    elif call.data == "resize_sticker":  # Изменено: добавлен обработчик для изменения размера
+        bot.answer_callback_query(call.id, "Resizing your image for a sticker...")
+        resize_sticker_and_send(call.message)
 
 
 def pixelate_and_send(message):
@@ -293,5 +315,31 @@ def heatmap_and_send(message):
     heatmap_image.save(output_stream, format="JPEG")
     output_stream.seek(0)
     bot.send_photo(chat_id, output_stream)
+
+def resize_sticker_and_send(message):
+    """
+    Изменяет размер изображения для использования в качестве стикера и отправляет его пользователю.
+
+    :param message: Сообщение Telegram.
+    """
+    chat_id = message.chat.id
+
+    # Получаем ID изображения из состояния пользователя
+    photo_id = user_states[chat_id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    # Открываем изображение
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+
+    # Применяем изменение размера для стикера
+    resized_image = resize_for_sticker(image)
+
+    # Отправляем результат
+    output_stream = io.BytesIO()
+    resized_image.save(output_stream, format="PNG")  # Стикеры Telegram требуют формат PNG
+    output_stream.seek(0)
+    bot.send_document(chat_id, output_stream, visible_file_name="sticker.png")
 
 bot.polling(none_stop=True)
