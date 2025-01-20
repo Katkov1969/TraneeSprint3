@@ -2,6 +2,7 @@ import telebot
 from PIL import Image, ImageOps, ImageFilter
 import io
 from telebot import types
+import random  # Для выбора случайной шутки
 
 TOKEN = '7585140510:AAH4vOvoVTp1tee5bamKriSUvZ6QKpy5MX4'
 bot = telebot.TeleBot(TOKEN)
@@ -13,6 +14,20 @@ user_states = {}  # тут будем хранить информацию о д�
 
 # набор символов из которых составляем изображение
 ASCII_CHARS = '@%#*+=-:. '
+
+# Список шуток
+JOKES = [
+    "Почему программисты не любят природу? Слишком много багов.",
+    "Сколько программистов нужно, чтобы заменить лампочку? Ни одного, это аппаратная проблема.",
+    "Почему Python такой грустный? Потому что у него нет классов.",
+    "Программист заходит в бар, заказывает 1 пиво, 0 пива и -1 пиво. Бармен говорит: 'Ты пьешь слишком много!'",
+    "Почему программисты любят темную тему? Потому что светлая тема выжигает глаза!",
+    "Программист женился на девушке, потому что она была 'совместима'.",
+    "В чем разница между программистом и обычным человеком? Программист считает с нуля.",
+    "Ошибка 404: шутка не найдена.",
+    "Как программист расслабляется? Пишет код, который не запускается.",
+    "Почему программисты всегда носят очки? Потому что они не могут найти 'C'."
+]
 
 
 def resize_image(image, new_width=100):
@@ -182,7 +197,7 @@ def handle_text(message):
 
 
 def get_options_keyboard():
-    # Изменено: добавлена кнопка для изменения размера изображения
+    # Изменено: добавлена кнопка для случайной шутки
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
@@ -190,10 +205,12 @@ def get_options_keyboard():
     mirror_horiz_btn = types.InlineKeyboardButton("Mirror Horizontally", callback_data="mirror_horizontal")
     mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertically", callback_data="mirror_vertical")
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
-    resize_sticker_btn = types.InlineKeyboardButton("Resize for Sticker", callback_data="resize_sticker")  # Новая кнопка
+    resize_sticker_btn = types.InlineKeyboardButton("Resize for Sticker", callback_data="resize_sticker")
+    joke_btn = types.InlineKeyboardButton("Random Joke", callback_data="random_joke")  # Новая кнопка
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_horiz_btn, mirror_vert_btn)
-    keyboard.add(heatmap_btn, resize_sticker_btn)  # Добавляем кнопку в ряд
+    keyboard.add(heatmap_btn, resize_sticker_btn)
+    keyboard.add(joke_btn)  # Добавляем кнопку "Random Joke" в отдельный ряд
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -216,9 +233,12 @@ def callback_query(call):
     elif call.data == "heatmap":
         bot.answer_callback_query(call.id, "Converting your image to a heatmap...")
         heatmap_and_send(call.message)
-    elif call.data == "resize_sticker":  # Изменено: добавлен обработчик для изменения размера
+    elif call.data == "resize_sticker":
         bot.answer_callback_query(call.id, "Resizing your image for a sticker...")
         resize_sticker_and_send(call.message)
+    elif call.data == "random_joke":  # Изменено: добавлен обработчик для случайной шутки
+        bot.answer_callback_query(call.id, "Here's a joke for you!")
+        send_random_joke(call.message)
 
 
 def pixelate_and_send(message):
@@ -341,5 +361,15 @@ def resize_sticker_and_send(message):
     resized_image.save(output_stream, format="PNG")  # Стикеры Telegram требуют формат PNG
     output_stream.seek(0)
     bot.send_document(chat_id, output_stream, visible_file_name="sticker.png")
+
+def send_random_joke(message):
+    """
+    Отправляет случайную шутку пользователю.
+
+    :param message: Сообщение Telegram.
+    """
+    chat_id = message.chat.id
+    joke = random.choice(JOKES)  # Выбираем случайную шутку
+    bot.send_message(chat_id, joke)  # Отправляем шутку пользователю
 
 bot.polling(none_stop=True)
