@@ -29,6 +29,19 @@ JOKES = [
     "Почему программисты всегда носят очки? Потому что они не могут найти 'C'."
 ]
 
+# Список комплиментов
+COMPLIMENTS = [
+    "Ты сегодня выглядишь потрясающе!",
+    "Ты — воплощение красоты и ума.",
+    "У тебя невероятная улыбка!",
+    "Ты вдохновляешь окружающих своим позитивом.",
+    "Ты замечательный человек!",
+    "Твоя доброта делает мир лучше.",
+    "Ты способен достичь всего, чего захочешь!",
+    "Ты просто сияешь сегодня!",
+    "С тобой всегда приятно общаться.",
+    "Ты делаешь этот мир ярче!"
+]
 
 def resize_image(image, new_width=100):
     width, height = image.size
@@ -197,7 +210,7 @@ def handle_text(message):
 
 
 def get_options_keyboard():
-    # Изменено: добавлена кнопка для случайной шутки
+    # Изменено: добавлена кнопка для случайного комплимента
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
@@ -206,11 +219,12 @@ def get_options_keyboard():
     mirror_vert_btn = types.InlineKeyboardButton("Mirror Vertically", callback_data="mirror_vertical")
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
     resize_sticker_btn = types.InlineKeyboardButton("Resize for Sticker", callback_data="resize_sticker")
-    joke_btn = types.InlineKeyboardButton("Random Joke", callback_data="random_joke")  # Новая кнопка
+    joke_btn = types.InlineKeyboardButton("Random Joke", callback_data="random_joke")
+    compliment_btn = types.InlineKeyboardButton("Random Compliment", callback_data="random_compliment")  # Новая кнопка
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_horiz_btn, mirror_vert_btn)
     keyboard.add(heatmap_btn, resize_sticker_btn)
-    keyboard.add(joke_btn)  # Добавляем кнопку "Random Joke" в отдельный ряд
+    keyboard.add(joke_btn, compliment_btn)  # Добавляем кнопку "Random Compliment" рядом с "Random Joke"
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -236,9 +250,12 @@ def callback_query(call):
     elif call.data == "resize_sticker":
         bot.answer_callback_query(call.id, "Resizing your image for a sticker...")
         resize_sticker_and_send(call.message)
-    elif call.data == "random_joke":  # Изменено: добавлен обработчик для случайной шутки
+    elif call.data == "random_joke":
         bot.answer_callback_query(call.id, "Here's a joke for you!")
         send_random_joke(call.message)
+    elif call.data == "random_compliment":  # Новая ветка для случайного комплимента
+        bot.answer_callback_query(call.id, "Here's a compliment for you!")
+        send_random_compliment(call.message)
 
 
 def pixelate_and_send(message):
@@ -371,5 +388,15 @@ def send_random_joke(message):
     chat_id = message.chat.id
     joke = random.choice(JOKES)  # Выбираем случайную шутку
     bot.send_message(chat_id, joke)  # Отправляем шутку пользователю
+
+def send_random_compliment(message):
+    """
+    Отправляет случайный комплимент пользователю.
+
+    :param message: Сообщение Telegram.
+    """
+    chat_id = message.chat.id
+    compliment = random.choice(COMPLIMENTS)  # Выбираем случайный комплимент
+    bot.send_message(chat_id, compliment)  # Отправляем комплимент пользователю
 
 bot.polling(none_stop=True)
