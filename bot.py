@@ -210,7 +210,7 @@ def handle_text(message):
 
 
 def get_options_keyboard():
-    # Изменено: добавлена кнопка для случайного комплимента
+    # Изменено: добавлена кнопка для подбрасывания монетки
     keyboard = types.InlineKeyboardMarkup()
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
@@ -220,11 +220,13 @@ def get_options_keyboard():
     heatmap_btn = types.InlineKeyboardButton("Heatmap", callback_data="heatmap")
     resize_sticker_btn = types.InlineKeyboardButton("Resize for Sticker", callback_data="resize_sticker")
     joke_btn = types.InlineKeyboardButton("Random Joke", callback_data="random_joke")
-    compliment_btn = types.InlineKeyboardButton("Random Compliment", callback_data="random_compliment")  # Новая кнопка
+    compliment_btn = types.InlineKeyboardButton("Random Compliment", callback_data="random_compliment")
+    coin_flip_btn = types.InlineKeyboardButton("Flip a Coin", callback_data="flip_coin")  # Новая кнопка
     keyboard.add(pixelate_btn, ascii_btn, invert_btn)
     keyboard.add(mirror_horiz_btn, mirror_vert_btn)
     keyboard.add(heatmap_btn, resize_sticker_btn)
-    keyboard.add(joke_btn, compliment_btn)  # Добавляем кнопку "Random Compliment" рядом с "Random Joke"
+    keyboard.add(joke_btn, compliment_btn)
+    keyboard.add(coin_flip_btn)  # Добавляем кнопку "Flip a Coin" на отдельный ряд
     return keyboard
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -253,9 +255,12 @@ def callback_query(call):
     elif call.data == "random_joke":
         bot.answer_callback_query(call.id, "Here's a joke for you!")
         send_random_joke(call.message)
-    elif call.data == "random_compliment":  # Новая ветка для случайного комплимента
+    elif call.data == "random_compliment":
         bot.answer_callback_query(call.id, "Here's a compliment for you!")
         send_random_compliment(call.message)
+    elif call.data == "flip_coin":  # Новая ветка для подбрасывания монетки
+        bot.answer_callback_query(call.id, "Flipping a coin...")
+        flip_coin_and_send(call.message)
 
 
 def pixelate_and_send(message):
@@ -398,5 +403,15 @@ def send_random_compliment(message):
     chat_id = message.chat.id
     compliment = random.choice(COMPLIMENTS)  # Выбираем случайный комплимент
     bot.send_message(chat_id, compliment)  # Отправляем комплимент пользователю
+
+def flip_coin_and_send(message):
+    """
+    Симулирует подбрасывание монетки и отправляет результат пользователю.
+
+    :param message: Сообщение Telegram.
+    """
+    chat_id = message.chat.id
+    result = random.choice(["Орел", "Решка"])  # Случайный выбор между "Орел" и "Решка"
+    bot.send_message(chat_id, f"Монета упала на: {result}")
 
 bot.polling(none_stop=True)
